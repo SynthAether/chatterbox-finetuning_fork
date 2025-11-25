@@ -8,10 +8,12 @@ class TrainConfig:
     model_dir: str = os.getenv("MODEL_DIR", "./pretrained_models")
     
     # Path to your metadata CSV (Format: ID|RawText|NormText)
-    csv_path: str = os.getenv("CSV_PATH", "./data/metadata.csv")
+    csv_path: str = os.getenv("CSV_PATH", "./MyTTSDataset/metadata.csv")
     
     # Directory containing WAV files
-    wav_dir: str = os.getenv("WAV_DIR", "./data/wavs")
+    wav_dir: str = os.getenv("WAV_DIR", "./MyTTSDataset/wavs")
+    
+    preprocessed_dir = os.getenv("PREPROCESS_DATASET_DIR", "./MyTTSDataset/preprocess")
     
     # Output directory for the finetuned model
     output_dir: str = os.getenv("OUTPUT_DIR", "./chatterbox_output")
@@ -23,6 +25,8 @@ class TrainConfig:
     num_epochs: int = 75
 
     # --- Constraints ---
+    start_text_token = 255
+    stop_text_token = 0
     max_text_len: int = 256
     max_speech_len: int = 850   # Truncates very long audio
     prompt_duration: float = 3.0 # Duration for the reference prompt (seconds)

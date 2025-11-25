@@ -8,6 +8,9 @@ Specially designed to support **new languages** (like Turkish) that aren't fully
 
 ## ⚠️ CRITICAL INFORMATION (Please Read)
 
+### 0. Preprocessing is Mandatory
+This repository uses an **offline preprocessing** strategy to maximize training speed. Before starting the training loop, you **must run** the `preprocess.py` script. This script processes all audio files, extracts speaker embeddings and acoustic tokens, and saves them as `.pt` files. The training script (`train.py`) will **only read** these preprocessed files, not the raw audio.
+
 ### 1. Tokenizer and Vocab Size (Most Important)
 Chatterbox uses a grapheme-based (character-level) tokenizer. The `tokenizer.json` file downloaded by `setup.py` includes support for **23 languages** from the original Chatterbox repository, covering most common characters across multiple languages.
 
@@ -46,6 +49,7 @@ chatterbox-finetune/
 │   ├── dataset.py           # Data loading and processing
 │   ├── model.py             # Model weight transfer and training wrapper
 │   └── utils.py             # Logger and VAD utilities
+├── preprocess.py            # [IMPORTANT] Preprocessing script
 ├── train.py                 # Main training script
 ├── inference.py             # Speech synthesis script (with VAD support)
 ├── setup.py                 # Setup script for downloading models
@@ -187,6 +191,14 @@ LEARNING_RATE = 5e-5
 NUM_EPOCHS = 50
 ```
 
+### Step 3: Preprocessing (CRITICAL STEP) ⚡
+Run this script **once** before training. It converts raw audio/text into tensors and saves them to disk. This speeds up training by **10x-20x** and prevents CPU bottlenecks.
+
+```bash
+python preprocess.py
+```
+*Output:* Check `MyTTSDataset/preprocess/` folder to see generated `.pt` files.
+
 ### 3. Start Training
 ```bash
 python train.py
@@ -253,6 +265,15 @@ All audio is automatically processed to mono and resampled to the correct sample
 ---
 
 ## 🛠️ Technical Details
+
+### Why Preprocessing?
+Original Chatterbox training pipelines often process audio "on-the-fly" (resampling, feature extraction) during training. This causes the GPU to wait for the CPU, slowing down training significantly.
+By running `preprocess.py`, we:
+1.  Extract Speaker Embeddings (Voice Encoder)
+2.  Extract Acoustic Tokens (S3Gen)
+3.  Tokenize Text
+4.  Save everything as optimized PyTorch tensors (`.pt`)
+This allows the `dataset.py` to simply load tensors, maximizing GPU utilization.
 
 ### Tokenizer Structure
 The `pretrained_models/tokenizer.json` file downloaded by `setup.py` includes support for **23 languages** with extensive grapheme coverage. This file is used by `src/chatterbox/tokenizer.py` during both training and inference.

@@ -71,7 +71,7 @@ def main():
 
     # 5. DATASET & WRAPPER
     logger.info("Initializing Dataset...")
-    train_ds = ChatterboxDataset(cfg, tts_engine_new)
+    train_ds = ChatterboxDataset(cfg)
     
     model_wrapper = ChatterboxTrainerWrapper(tts_engine_new.t3)
 
@@ -86,7 +86,7 @@ def main():
         save_steps=100,
         logging_steps=10,
         remove_unused_columns=False, # Required for our custom wrapper
-        dataloader_num_workers=0,    
+        dataloader_num_workers=2,    
         report_to=["tensorboard"],
         fp16=True if torch.cuda.is_available() else False,
         save_total_limit=2

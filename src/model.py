@@ -88,6 +88,7 @@ class ChatterboxTrainerWrapper(torch.nn.Module):
         super().__init__()
         self.t3 = t3_model
 
+
     def forward(
             self,
             text_tokens, 
@@ -98,15 +99,11 @@ class ChatterboxTrainerWrapper(torch.nn.Module):
             prompt_tokens):
 
         device = text_tokens.device
-        batch_size = text_tokens.size(0)
-
-        # Conditionals
-        emotion_adv = 0.5 * torch.ones(batch_size, 1, 1).to(device)
         
         t3_cond = T3Cond(
             speaker_emb=speaker_emb,
             cond_prompt_speech_tokens=prompt_tokens,
-            emotion_adv=emotion_adv
+            emotion_adv=None
         )
 
         # Forward Pass
@@ -121,30 +118,30 @@ class ChatterboxTrainerWrapper(torch.nn.Module):
 
         IGNORE_ID = -100
 
-        # --- CRITICAL: SHIFTING TOKENS (Next Token Prediction) ---
-        # Input: [A, B, C] -> Label: [B, C, D]
-        
-        # 1. Text Loss
-        text_logits = out.text_logits[:, :-1, :].transpose(1, 2) # Remove last prediction
-        text_labels = text_tokens[:, 1:] # Remove first input (Start Token)
 
-        curr_text_len = text_labels.size(1)
-        mask_text = torch.arange(curr_text_len, device=device)[None] >= (text_token_lens[:, None] - 1)
-        text_labels = text_labels.masked_fill(mask_text, IGNORE_ID)
-
-        loss_text = F.cross_entropy(text_logits, text_labels, ignore_index=IGNORE_ID)
-
-        # 2. Speech Loss (Main Target)
         speech_logits = out.speech_logits[:, :-1, :].transpose(1, 2)
         speech_labels = speech_tokens[:, 1:] 
-
+        
         curr_speech_len = speech_labels.size(1)
-        mask_speech = torch.arange(curr_speech_len, device=device)[None] >= (speech_token_lens[:, None] - 1)
-        speech_labels = speech_labels.masked_fill(mask_speech, IGNORE_ID)
-
+        mask_speech_pad = torch.arange(curr_speech_len, device=device)[None, :] >= (speech_token_lens[:, None] - 1)
+        mask_prompt = torch.arange(curr_speech_len, device=device)[None, :] < self.prompt_token_len
+        
+        speech_labels = speech_labels.masked_fill(mask_speech_pad | mask_prompt, IGNORE_ID)
         loss_speech = F.cross_entropy(speech_logits, speech_labels, ignore_index=IGNORE_ID)
+
+
+        
+        text_logits = out.text_logits[:, :-1, :].transpose(1, 2)
+        text_labels = text_tokens[:, 1:]
+            
+        curr_text_len = text_labels.size(1)
+        mask_text_pad = torch.arange(curr_text_len, device=device)[None, :] >= (text_token_lens[:, None] - 1)
+        
+        text_labels = text_labels.masked_fill(mask_text_pad, IGNORE_ID)
+            
+        loss_text = F.cross_entropy(text_logits, text_labels, ignore_index=IGNORE_ID)
 
         total_loss = loss_text + loss_speech
 
 
-        return (total_loss, None)
+        return (total_loss, out)
