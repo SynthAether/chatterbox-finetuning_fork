@@ -9,16 +9,17 @@ Specially designed to support **new languages** (like Turkish) that aren't fully
 ## ⚠️ CRITICAL INFORMATION (Please Read)
 
 ### 1. Tokenizer and Vocab Size (Most Important)
-Chatterbox uses a grapheme-based (character-level) tokenizer. The original model is English-focused. **If you're training for a non-English language, you must create your own `tokenizer.json` file** containing all characters specific to your target language.
+Chatterbox uses a grapheme-based (character-level) tokenizer. The `tokenizer.json` file downloaded by `setup.py` includes support for **23 languages** from the original Chatterbox repository, covering most common characters across multiple languages.
 
-*   **Examples of language-specific characters:**
+*   **Default Support:** The provided tokenizer already includes characters for English, Turkish, French, German, Spanish, and 18+ other languages
+*   **When to customize:** If your target language has special characters not covered in the default tokenizer, you can create a custom `tokenizer.json`
+*   **Examples of special characters by language:**
     *   Turkish: `ç, ğ, ş, ö, ü, ı`
     *   French: `é, è, ê, à, ù, ç`
     *   German: `ä, ö, ü, ß`
     *   Spanish: `ñ, á, é, í, ó, ú`
-*   **How to create:** Build a JSON mapping that includes all graphemes (characters) used in your target language, including letters, numbers, punctuation, and special characters.
-*   **Critical:** The `NEW_VOCAB_SIZE` variable in both `src/config.py` AND `inference.py` **must exactly match** the total number of tokens in your `tokenizer.json` file.
-*   **Setup:** `setup.py` downloads a default English tokenizer. Replace `pretrained_models/tokenizer.json` with your custom mapping before training.
+*   **Critical:** The `NEW_VOCAB_SIZE` variable in both `src/config.py` AND `inference.py` **must exactly match** the total number of tokens in your `tokenizer.json` file
+*   **Default vocab size:** Check the downloaded `tokenizer.json` to see the exact token count, then set `NEW_VOCAB_SIZE` accordingly
 
 ### 2. Audio Sample Rates
 *   **Training (Input):** Chatterbox's encoder and T3 module work with **16,000 Hz (16kHz)** audio. Even if your dataset uses different rates, `dataset.py` automatically resamples to 16kHz.
@@ -58,6 +59,26 @@ chatterbox-finetune/
 
 ### 1. Install Dependencies
 Requires Python 3.8+ and GPU (recommended):
+
+**Install FFmpeg (Required):**
+```bash
+# on Ubuntu or Debian
+sudo apt update && sudo apt install ffmpeg
+
+# on Arch Linux
+sudo pacman -S ffmpeg
+
+# on MacOS using Homebrew (https://brew.sh/)
+brew install ffmpeg
+
+# on Windows using Chocolatey (https://chocolatey.org/)
+choco install ffmpeg
+
+# on Windows using Scoop (https://scoop.sh/)
+scoop install ffmpeg
+```
+
+**Install Python Dependencies:**
 ```bash
 
 git clone https://github.com/gokhaneraslan/chatterbox-finetuning-basic.git
@@ -131,9 +152,10 @@ MyTTSDataset/
 
 **Dataset Quality Requirements:**
 - Sample rate: 16kHz, 22.05kHz, or 44.1kHz (will be resampled to 16kHz automatically)
-- Format: WAV (mono or stereo)
+- Format: WAV (mono or stereo - will be converted to mono automatically)
 - Duration: 3-10 seconds per segment (optimal for TTS)
-- Minimum total duration: 30+ minutes for basic training, 1-2 hours recommended
+- Minimum total duration: 30+ minutes for basic training
+- **Recommended:** 1 hour of clean audio for optimal results
 - Audio quality: Clean, minimal background noise
 
 ### 2. Configuration
@@ -176,6 +198,7 @@ The trained model will be saved as `chatterbox_output/t3_finetuned.safetensors`.
 *   **VRAM:** T3 is a Transformer model with high VRAM usage. For 12GB VRAM, use `batch_size=4`. For lower VRAM, use `batch_size=2` with `grad_accum=32`.
 *   **Mixed Precision:** Code uses `fp16=True` by default for faster training and memory efficiency.
 *   **Checkpointing:** Models are saved every epoch in `chatterbox_output/`.
+*   **Recommended Training Duration:** For optimal results with 1 hour of target speaker audio, train for **150 epochs** or **1000 steps**. This configuration typically produces high-quality voice cloning results.
 
 ---
 
@@ -221,20 +244,33 @@ The script automatically splits long text into sentences for better quality:
 TEXT_TO_SAY = "Hello! How are you today? This is amazing."
 ```
 
-**VAD Processing:**
-VAD (Voice Activity Detection) is enabled by default to prevent hallucinations and trim silence. Disable if needed:
-```python
-USE_VAD = False  # in inference.py
-```
+**Audio Processing:**
+All audio is automatically processed to mono and resampled to the correct sample rate using FFmpeg. The output format is:
+- **Channels:** Mono (1 channel)
+- **Sample Rate:** 24kHz
+- **Codec:** 16-bit PCM WAV
 
 ---
 
 ## 🛠️ Technical Details
 
 ### Tokenizer Structure
-The `pretrained_models/tokenizer.json` file is used by `src/chatterbox/tokenizer.py` during training and inference. 
+The `pretrained_models/tokenizer.json` file downloaded by `setup.py` includes support for **23 languages** with extensive grapheme coverage. This file is used by `src/chatterbox/tokenizer.py` during both training and inference.
 
-**Creating a Custom Tokenizer for Your Language:**
+**Default Multi-Language Support:**
+The provided tokenizer already covers common characters from 23 languages, including but not limited to:
+- Latin-based languages (English, French, Spanish, German, Italian, Portuguese)
+- Turkish with special characters (ç, ğ, ı, ö, ş, ü)
+- Eastern European languages
+- And more
+
+**When to Create a Custom Tokenizer:**
+You only need to create a custom tokenizer if:
+1. Your target language has special characters not in the default set
+2. You want to optimize the vocab size for a specific language
+3. You need to add domain-specific symbols or characters
+
+**Creating a Custom Tokenizer (Optional):**
 
 1. **Identify all characters** in your target language:
    - All letters (including accented/special characters)
@@ -264,16 +300,24 @@ The `pretrained_models/tokenizer.json` file is used by `src/chatterbox/tokenizer
 
 5. **Replace** `pretrained_models/tokenizer.json` with your custom file before training
 
-**Language Examples:**
-- **English (default):** ~150 tokens
-- **Turkish:** ~2454 tokens (includes ç, ğ, ı, ö, ş, ü)
-- **French:** ~200 tokens (includes é, è, ê, à, ù, ç)
-- **German:** ~180 tokens (includes ä, ö, ü, ß)
+**Vocab Size Examples:**
+- **Default (23 languages):** Check your downloaded `tokenizer.json` for exact count
+- **Custom Turkish:** ~2454 tokens (if you want Turkish-only optimization)
+- **Custom French:** ~200 tokens (if you want French-only optimization)
+- **Custom German:** ~180 tokens (if you want German-only optimization)
 
-**Warning:** Mismatched vocab size is the most common error. Always verify that your `NEW_VOCAB_SIZE` matches your `tokenizer.json` token count.
+**Important:** The default tokenizer should work for most languages. Only customize if you have specific requirements or encounter missing characters.
 
 ### VAD Integration
-During inference, `inference.py` uses Silero VAD to prevent hallucinations and sentence-ending elongations. Requires internet connection on first run (downloads model automatically).
+During inference, `inference.py` uses Silero VAD to prevent hallucinations and sentence-ending elongations. This automatically trims unwanted silence and noise from generated audio. Requires internet connection on first run (downloads model automatically).
+
+### Audio Processing Pipeline
+All audio processing uses **FFmpeg** for professional-quality results:
+- **Input:** Automatic conversion to mono (1 channel)
+- **Resampling:** Automatic resampling to required sample rates
+- **Training:** 16kHz processing
+- **Output:** 24kHz, 16-bit PCM WAV format
+- **Codec:** `pcm_s16le` (16-bit signed little-endian PCM)
 
 ### Model Architecture
 *   **VE (Voice Encoder):** Extracts speaker embeddings from reference audio
@@ -303,6 +347,11 @@ During inference, `inference.py` uses Silero VAD to prevent hallucinations and s
 *   Ensure adequate training data (minimum 30 minutes recommended)
 *   Verify sample rates are correct (16kHz for training, 24kHz for output)
 
+---
+
+## 📄 License
+
+This project builds upon the Chatterbox TTS model. Please refer to the original Chatterbox repository for license information.
 
 ---
 

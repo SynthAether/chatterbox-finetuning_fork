@@ -14,7 +14,7 @@ class TrainConfig:
     wav_dir: str = os.getenv("WAV_DIR", "./data/wavs")
     
     # Output directory for the finetuned model
-    output_dir: str = os.getenv("OUTPUT_DIR", "./output_finetuned")
+    output_dir: str = os.getenv("OUTPUT_DIR", "./chatterbox_output")
 
     # --- Hyperparameters ---
     batch_size: int = 4         # Adjust based on VRAM (2, 4, 8)

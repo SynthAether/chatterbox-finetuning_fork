@@ -124,7 +124,7 @@ def main():
     TEXT_TO_SAY = " "
     
     AUDIO_PROMPT = "/content/drive/MyDrive/audio/MyTTSDataset/wavs/sample1.wav"
-    OUTPUT_FILE = "output_stitched.wav"
+    OUTPUT_FILE = "./speaker_reference/reference.wav"
     
     # Hyperparameters
     PARAMS = {
