@@ -73,7 +73,6 @@ def generate_sentence_audio(
         engine: ChatterboxTTS,
         text: str,
         prompt_path: str,
-        lang_id: str = "tr",
         **kwargs
     ):
     """
@@ -87,7 +86,6 @@ def generate_sentence_audio(
         wav_tensor = engine.generate(
             text=text,
             audio_prompt_path=prompt_path,
-            language_id=lang_id, # If supported by your modified generate
             **kwargs
         )
         
